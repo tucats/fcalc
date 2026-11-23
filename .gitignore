@@ -1,0 +1,11 @@
+# build.sh's output
+/fcalc
+/build/
+*.mod
+*.o
+
+# VMS build intermediates
+*.mar
+*.obj
+*.f90$mod
+*.exe
