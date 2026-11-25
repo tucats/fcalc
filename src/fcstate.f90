@@ -39,6 +39,7 @@ module fcstate
   use fcarrays, only: quantity, is_array
   use fcsymbols, only: each_variable, each_function
   use fcfuncs, only: angle_mode, seed_given, seed_number
+  use fcplatform, only: open_text
   implicit none
   private
 
@@ -190,9 +191,10 @@ contains
   ! the variable is full, which is the usual case, and END= one for the end
   ! of the input. These labels, 10, 20, and 30, are the old-fashioned GO TO
   ! targets Fortran's I/O statements still use. A line too long for the
-  ! system to read (on VMS, a terminal's line past 199 characters) is an
-  ! error the READ's IOSTAT= catches, after which the next READ reads the
-  ! next line.
+  ! system to read is an error the READ's IOSTAT= catches. From a file that
+  ! is a line past 199 characters, and the next READ reads the next line;
+  ! at a terminal it is one past 133 characters (the unit's record), and as
+  ! on VMS the rest of the line is what the next READ reads.
   !
   ! The terminal is unit *, which isn't a number, so each READ is written
   ! twice, once for each.
@@ -248,15 +250,15 @@ contains
 
   ! SAVE_STATE writes the state to the file NAME, replacing it: false after
   ! an error at COLUMN. STATUS='REPLACE' makes a new file whether or not
-  ! there was one (on VMS, a new version of it), and ACTION='WRITE' opens it
-  ! only to write. Echo isn't saved: it is how a session is shown, not part
+  ! there was one (on VMS, a new version of it); module FCPLATFORM's
+  ! OPEN_TEXT opens it only to write, a file of plain lines. Echo isn't saved: it is how a session is shown, not part
   ! of what it computes.
   subroutine save_state(name, column)
     character(len=*), intent(in) :: name
     integer, intent(in) :: column
     integer :: k, ios
 
-    open (unit=save_file, file=name, status='REPLACE', action='WRITE', iostat=ios)
+    call open_text(save_file, name, 'REPLACE', 'ASIS', ios)
     if (ios /= 0) then
       call fail(e_fileerr, column, name)
       return
@@ -462,15 +464,15 @@ contains
   ! OPEN_LOG starts a transcript in the file NAME, closing any other first:
   ! everything SAY writes is added to it (module FCMESSAGES' LOG_UNIT),
   ! after a heading with the time. POSITION='APPEND' opens a file at its end,
-  ! so a log is added to; STATUS='UNKNOWN' makes the file if there is none.
+  ! so a log is added to; STATUS='UNKNOWN' makes the file if there is none;
+  ! OPEN_TEXT makes it a file of plain lines, as SAVE's.
   subroutine open_log(name, column)
     character(len=*), intent(in) :: name
     integer, intent(in) :: column
     integer :: ios
 
     if (log_unit /= 0) call close_log(column)
-    open (unit=log_file, file=name, status='UNKNOWN', action='WRITE', &
-      position='APPEND', iostat=ios)
+    call open_text(log_file, name, 'UNKNOWN', 'APPEND', ios)
     if (ios /= 0) then
       call fail(e_fileerr, column, name)
       return
